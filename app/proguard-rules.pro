@@ -34,3 +34,7 @@
 # OkHttp
 -dontwarn okhttp3.**
 -dontwarn okio.**
+
+# OTA Updater (Gson deserialization)
+-keep class com.yamp.updater.GitHubRelease { *; }
+-keep class com.yamp.updater.GitHubAsset { *; }

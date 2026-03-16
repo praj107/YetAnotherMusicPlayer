@@ -55,5 +55,6 @@ data class SettingsUiState(
     val autoFetchMetadata: Boolean = false,
     val metadataFetchProgress: String? = null,
     val trackCount: Int = 0,
-    val incompleteMetadataCount: Int = 0
+    val incompleteMetadataCount: Int = 0,
+    val updateState: com.yamp.updater.UpdateState = com.yamp.updater.UpdateState.Idle
 )

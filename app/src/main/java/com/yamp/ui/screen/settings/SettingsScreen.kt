@@ -1,5 +1,6 @@
 package com.yamp.ui.screen.settings
 
+import android.app.Activity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,20 +23,67 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.yamp.BuildConfig
+import com.yamp.ui.components.UpdateAvailableDialog
+import com.yamp.ui.components.UpdateDownloadingDialog
+import com.yamp.ui.components.UpdateFailedDialog
+import com.yamp.ui.components.UpdateReadyDialog
 import com.yamp.ui.theme.AccentCyan
 import com.yamp.ui.theme.DarkCard
 import com.yamp.ui.theme.DarkSurfaceVariant
 import com.yamp.ui.theme.Dimensions
 import com.yamp.ui.theme.DividerColor
 import com.yamp.ui.theme.TextSecondary
+import com.yamp.updater.UpdateState
 
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    // Update dialogs
+    when (val updateState = state.updateState) {
+        is UpdateState.Available -> {
+            UpdateAvailableDialog(
+                release = updateState.release,
+                onDownload = { viewModel.onDownloadUpdate() },
+                onDismiss = { viewModel.onDismissUpdate() }
+            )
+        }
+        is UpdateState.Downloading -> {
+            UpdateDownloadingDialog(
+                onDismiss = { viewModel.onDismissUpdate() }
+            )
+        }
+        is UpdateState.ReadyToInstall -> {
+            UpdateReadyDialog(
+                version = updateState.release.version,
+                onInstall = {
+                    if (viewModel.canInstallPackages()) {
+                        viewModel.onInstallUpdate()
+                    } else {
+                        (context as? Activity)?.startActivity(
+                            viewModel.getInstallPermissionIntent()
+                        )
+                    }
+                },
+                onDismiss = { viewModel.onDismissUpdate() }
+            )
+        }
+        is UpdateState.Failed -> {
+            UpdateFailedDialog(
+                message = updateState.message,
+                onRetry = { viewModel.onCheckForUpdate() },
+                onDismiss = { viewModel.onDismissUpdate() }
+            )
+        }
+        else -> { /* No dialog */ }
+    }
 
     Column(
         modifier = Modifier
@@ -156,6 +204,51 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(Dimensions.paddingLarge))
 
+        // Updates
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = DarkCard)
+        ) {
+            Column(modifier = Modifier.padding(Dimensions.paddingLarge)) {
+                Text("Updates", style = MaterialTheme.typography.titleLarge)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val updateStatusText = when (state.updateState) {
+                    is UpdateState.Idle -> "Tap to check for updates"
+                    is UpdateState.Checking -> "Checking for updates..."
+                    is UpdateState.UpToDate -> "You're up to date"
+                    is UpdateState.Available -> "Update available!"
+                    is UpdateState.Downloading -> "Downloading..."
+                    is UpdateState.ReadyToInstall -> "Ready to install"
+                    is UpdateState.Failed -> "Check failed"
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            enabled = state.updateState is UpdateState.Idle ||
+                                    state.updateState is UpdateState.UpToDate ||
+                                    state.updateState is UpdateState.Failed
+                        ) { viewModel.onCheckForUpdate() }
+                        .padding(vertical = 8.dp)
+                ) {
+                    Text(
+                        "Check for updates",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = AccentCyan
+                    )
+                    Text(
+                        updateStatusText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(Dimensions.paddingLarge))
+
         // About
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -164,7 +257,7 @@ fun SettingsScreen(
             Column(modifier = Modifier.padding(Dimensions.paddingLarge)) {
                 Text("About", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("YAMP v1.0.0", style = MaterialTheme.typography.bodyLarge)
+                Text("YAMP v${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodyLarge)
                 Text(
                     "Yet Another Music Player",
                     style = MaterialTheme.typography.bodyMedium,
