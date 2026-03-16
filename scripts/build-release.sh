@@ -44,7 +44,7 @@ command -v git >/dev/null 2>&1 || { error "git is required"; exit 1; }
 cd "$PROJECT_DIR"
 REPO_URL=$(git remote get-url origin 2>/dev/null) || { error "No git remote 'origin' configured"; exit 1; }
 # Extract owner/repo from URL (handles both HTTPS and SSH)
-GITHUB_REPO=$(echo "$REPO_URL" | sed -E 's|.*github\.com[:/](.+/.+?)(\.git)?$|\1|')
+GITHUB_REPO=$(echo "$REPO_URL" | sed -E 's|.*github\.com[:/]||' | sed 's/\.git$//')
 log "GitHub repo: $GITHUB_REPO"
 
 # Ensure working tree is clean (except build.gradle.kts which we may modify)
