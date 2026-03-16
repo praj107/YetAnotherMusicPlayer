@@ -1,0 +1,17 @@
+package com.yamp.data.mapper
+
+import com.yamp.data.local.db.entity.MetadataCacheEntity
+import com.yamp.data.remote.musicbrainz.dto.MBRecording
+
+fun MBRecording.toMetadataCache(trackId: Long): MetadataCacheEntity = MetadataCacheEntity(
+    trackId = trackId,
+    musicBrainzRecordingId = id,
+    resolvedTitle = title,
+    resolvedArtist = artistCredit.firstOrNull()?.artist?.name,
+    resolvedAlbum = releases?.firstOrNull()?.title,
+    resolvedGenre = null,
+    resolvedYear = releases?.firstOrNull()?.date?.take(4)?.toIntOrNull(),
+    coverArtUrl = releases?.firstOrNull()?.let { "https://coverartarchive.org/release/${it.id}/front-250" },
+    fetchedAt = System.currentTimeMillis(),
+    confidence = score / 100f
+)
