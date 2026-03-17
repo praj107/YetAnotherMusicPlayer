@@ -9,8 +9,8 @@ plugins {
 }
 
 val versionMajor = 1
-val versionMinor = 1
-val versionPatch = 2
+val versionMinor = 2
+val versionPatch = 0
 
 // Load keystore properties if available
 val keystorePropertiesFile = rootProject.file("keystore.properties")
