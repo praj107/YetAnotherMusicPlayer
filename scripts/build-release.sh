@@ -128,24 +128,53 @@ info "All tests passed."
 log "Building release APK..."
 ./gradlew assembleRelease
 
-# Locate and copy APK
-mkdir -p "$OUTPUT_DIR"
-APK_SOURCE="$PROJECT_DIR/app/build/outputs/apk/release/app-release-unsigned.apk"
-APK_DEST="$OUTPUT_DIR/yamp-v${NEW_VERSION}.apk"
-
-if [ -f "$APK_SOURCE" ]; then
-    cp "$APK_SOURCE" "$APK_DEST"
-else
-    APK_SOURCE=$(find "$PROJECT_DIR/app/build/outputs" -name "*.apk" -path "*/release/*" -type f | head -1)
-    if [ -n "$APK_SOURCE" ]; then
-        cp "$APK_SOURCE" "$APK_DEST"
-    else
-        error "No release APK found in build outputs"
-        exit 1
-    fi
+# Verify signing config exists
+if [ ! -f "$PROJECT_DIR/keystore.properties" ]; then
+    error "keystore.properties not found! Release APK must be signed."
+    error "Create keystore.properties with: storeFile, storePassword, keyAlias, keyPassword"
+    exit 1
 fi
 
+# Locate and copy APK (prefer signed over unsigned)
+mkdir -p "$OUTPUT_DIR"
+APK_DEST="$OUTPUT_DIR/yamp-v${NEW_VERSION}.apk"
+
+# AGP outputs app-release.apk when signed, app-release-unsigned.apk when not
+APK_SOURCE="$PROJECT_DIR/app/build/outputs/apk/release/app-release.apk"
+if [ ! -f "$APK_SOURCE" ]; then
+    # Fallback: search for any release APK (signed preferred)
+    APK_SOURCE=$(find "$PROJECT_DIR/app/build/outputs" -name "*.apk" -path "*/release/*" ! -name "*unsigned*" -type f | head -1)
+    if [ -z "$APK_SOURCE" ]; then
+        # Last resort: check for unsigned (will warn)
+        APK_SOURCE=$(find "$PROJECT_DIR/app/build/outputs" -name "*.apk" -path "*/release/*" -type f | head -1)
+        if [ -n "$APK_SOURCE" ]; then
+            warn "Only unsigned APK found - it will NOT install on devices!"
+        else
+            error "No release APK found in build outputs"
+            exit 1
+        fi
+    fi
+fi
+cp "$APK_SOURCE" "$APK_DEST"
+
 log "Release APK: $APK_DEST ($(du -h "$APK_DEST" | cut -f1))"
+
+# Verify APK is signed
+if command -v apksigner >/dev/null 2>&1; then
+    if apksigner verify --print-certs "$APK_DEST" >/dev/null 2>&1; then
+        info "APK signature verified (v1+v2+v3)"
+    else
+        warn "APK signature verification failed!"
+    fi
+elif command -v jarsigner >/dev/null 2>&1; then
+    if jarsigner -verify "$APK_DEST" >/dev/null 2>&1; then
+        info "APK signature verified (jarsigner)"
+    else
+        warn "APK signature verification failed!"
+    fi
+else
+    warn "Neither apksigner nor jarsigner found - cannot verify signature"
+fi
 
 # Generate SHA-256 checksum
 CHECKSUM_FILE="$OUTPUT_DIR/yamp-v${NEW_VERSION}.sha256"

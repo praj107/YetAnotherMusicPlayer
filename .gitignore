@@ -14,5 +14,7 @@ local.properties
 *.aab
 *.jks
 *.keystore
+keystore.properties
+/keystore/
 !gradle/wrapper/gradle-wrapper.jar
 /releases/
