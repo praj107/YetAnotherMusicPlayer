@@ -9,7 +9,6 @@ import androidx.navigation.navArgument
 import com.yamp.domain.model.Track
 import com.yamp.ui.screen.home.HomeScreen
 import com.yamp.ui.screen.library.LibraryScreen
-import com.yamp.ui.screen.nowplaying.NowPlayingScreen
 import com.yamp.ui.screen.playlist.PlaylistScreen
 import com.yamp.ui.screen.search.SearchScreen
 import com.yamp.ui.screen.settings.SettingsScreen
@@ -38,10 +37,6 @@ fun YampNavHost(
 
         composable(Screen.Search.route) {
             SearchScreen(onTrackClick = onTrackClick)
-        }
-
-        composable(Screen.NowPlaying.route) {
-            NowPlayingScreen()
         }
 
         composable(Screen.Settings.route) {

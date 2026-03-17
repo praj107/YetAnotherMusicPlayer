@@ -1,5 +1,6 @@
 package com.yamp.di
 
+import com.yamp.data.remote.itunes.ITunesSearchApi
 import com.yamp.data.remote.musicbrainz.MusicBrainzApi
 import com.yamp.data.remote.musicbrainz.MusicBrainzRateLimiter
 import dagger.Module
@@ -19,6 +20,7 @@ import javax.inject.Singleton
 object NetworkModule {
 
     private const val MUSICBRAINZ_BASE_URL = "https://musicbrainz.org/ws/2/"
+    private const val ITUNES_BASE_URL = "https://itunes.apple.com/"
 
     @Provides
     @Singleton
@@ -51,6 +53,16 @@ object NetworkModule {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(MusicBrainzApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideITunesSearchApi(okHttpClient: OkHttpClient): ITunesSearchApi =
+        Retrofit.Builder()
+            .baseUrl(ITUNES_BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(ITunesSearchApi::class.java)
 
     @Provides
     @Singleton

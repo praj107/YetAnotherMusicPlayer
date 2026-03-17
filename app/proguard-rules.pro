@@ -38,3 +38,6 @@
 # OTA Updater (Gson deserialization)
 -keep class com.yamp.updater.GitHubRelease { *; }
 -keep class com.yamp.updater.GitHubAsset { *; }
+
+# iTunes API (Gson deserialization)
+-keep class com.yamp.data.remote.itunes.dto.** { *; }

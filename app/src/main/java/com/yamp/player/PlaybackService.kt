@@ -23,7 +23,8 @@ class PlaybackService : MediaSessionService() {
         super.onCreate()
         createNotificationChannel()
         val player = playbackManager.getOrCreatePlayer()
-        mediaSession = MediaSession.Builder(this, player).build()
+        val forwardingPlayer = QueueForwardingPlayer(player, playbackManager)
+        mediaSession = MediaSession.Builder(this, forwardingPlayer).build()
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {

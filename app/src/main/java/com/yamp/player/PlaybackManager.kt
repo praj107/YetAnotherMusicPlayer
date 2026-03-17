@@ -3,6 +3,7 @@ package com.yamp.player
 import android.content.Context
 import android.net.Uri
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.yamp.domain.model.Track
@@ -82,7 +83,18 @@ class PlaybackManager @Inject constructor(
             queueManager.setQueue(queue, startIndex)
         }
         val player = getOrCreatePlayer()
-        val mediaItem = MediaItem.fromUri(Uri.parse(track.contentUri))
+        val mediaItem = MediaItem.Builder()
+            .setUri(Uri.parse(track.contentUri))
+            .setMediaId(track.id.toString())
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(track.title)
+                    .setArtist(track.artist)
+                    .setAlbumTitle(track.album)
+                    .setArtworkUri(track.albumArtUri?.let { Uri.parse(it) })
+                    .build()
+            )
+            .build()
         player.setMediaItem(mediaItem)
         player.prepare()
         player.play()
