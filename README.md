@@ -45,6 +45,7 @@ com.yamp/
 - Android SDK (API 35)
 - JDK 17+
 - Gradle 8.11+
+- For automated releases: Jenkins 2.541+ with the setup in `ci/jenkins/`
 
 ### Debug Build
 ```bash
@@ -56,12 +57,17 @@ com.yamp/
 ./gradlew assembleRelease
 ```
 
-### Version Bump + Release
+### CI/CD Release
+Jenkins is now the source-of-truth release path. The pipeline definition lives in `Jenkinsfile`, and the controller setup is documented in `ci/jenkins/README.md`.
+
+### Local Fallback Release
 ```bash
 ./scripts/build-release.sh patch   # 1.0.0 -> 1.0.1
 ./scripts/build-release.sh minor   # 1.0.0 -> 1.1.0
 ./scripts/build-release.sh major   # 1.0.0 -> 2.0.0
 ```
+
+Versioning is stored in `version.properties` and shared by Gradle, Jenkins, and the local fallback script.
 
 ### Run Tests
 ```bash

@@ -3,6 +3,7 @@ package com.yamp.di
 import com.yamp.data.remote.itunes.ITunesSearchApi
 import com.yamp.data.remote.musicbrainz.MusicBrainzApi
 import com.yamp.data.remote.musicbrainz.MusicBrainzRateLimiter
+import com.yamp.BuildConfig
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -26,7 +27,7 @@ object NetworkModule {
     @Singleton
     fun provideUserAgentInterceptor(): Interceptor = Interceptor { chain ->
         val request = chain.request().newBuilder()
-            .header("User-Agent", "YAMP/1.0.0 (yamp-music-player)")
+            .header("User-Agent", "YAMP/${BuildConfig.VERSION_NAME} (yamp-music-player)")
             .header("Accept", "application/json")
             .build()
         chain.proceed(request)

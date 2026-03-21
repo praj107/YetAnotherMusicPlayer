@@ -1,7 +1,15 @@
 package com.yamp.player
 
+import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
+import android.media.AudioDeviceCallback
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.net.Uri
+import androidx.core.content.ContextCompat
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -11,6 +19,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,12 +42,25 @@ class PlaybackManager @Inject constructor(
     private var _repeatMode = RepeatMode.OFF
     val repeatMode: RepeatMode get() = _repeatMode
 
+    private val audioManager = context.getSystemService(AudioManager::class.java)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
     private var exoPlayer: ExoPlayer? = null
     private var positionUpdateJob: Job? = null
-    private val scope = CoroutineScope(Dispatchers.Main)
+    private var fadeJob: Job? = null
+    private var outputMonitorRegistered = false
 
     private var onTrackCompleted: ((Long, Long) -> Unit)? = null
     private var onTrackStarted: ((Long) -> Unit)? = null
+    private var trackStartTime: Long = 0L
+
+    private val audioDeviceCallback = object : AudioDeviceCallback() {
+        override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) {
+            if (removedDevices.any(::isExternalPlaybackDevice) && exoPlayer?.isPlaying == true) {
+                pause()
+            }
+        }
+    }
 
     fun setCallbacks(
         onCompleted: (trackId: Long, durationListened: Long) -> Unit,
@@ -51,8 +73,17 @@ class PlaybackManager @Inject constructor(
     fun getOrCreatePlayer(): ExoPlayer {
         if (exoPlayer == null) {
             exoPlayer = ExoPlayer.Builder(context).build().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(C.USAGE_MEDIA)
+                        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                        .build(),
+                    true
+                )
+                setHandleAudioBecomingNoisy(true)
                 addListener(playerListener)
             }
+            registerOutputMonitor()
         }
         return exoPlayer!!
     }
@@ -67,7 +98,11 @@ class PlaybackManager @Inject constructor(
                     }
                 }
                 Player.STATE_READY -> updatePlayingState()
-                else -> {}
+                Player.STATE_IDLE -> {
+                    if (queueManager.currentTrack == null) {
+                        _playbackState.value = PlaybackState.Idle
+                    }
+                }
             }
         }
 
@@ -76,13 +111,15 @@ class PlaybackManager @Inject constructor(
         }
     }
 
-    private var trackStartTime: Long = 0L
-
     fun playTrack(track: Track, queue: List<Track>? = null, startIndex: Int = 0) {
         if (queue != null) {
             queueManager.setQueue(queue, startIndex)
         }
+
+        ensurePlaybackService()
         val player = getOrCreatePlayer()
+        cancelFade(resetVolume = true)
+
         val mediaItem = MediaItem.Builder()
             .setUri(Uri.parse(track.contentUri))
             .setMediaId(track.id.toString())
@@ -95,23 +132,28 @@ class PlaybackManager @Inject constructor(
                     .build()
             )
             .build()
+
         player.setMediaItem(mediaItem)
         player.prepare()
-        player.play()
         trackStartTime = System.currentTimeMillis()
         onTrackStarted?.invoke(track.id)
-        startPositionUpdates()
+        fadeInAndRun(player) { player.play() }
     }
 
     fun play() {
-        exoPlayer?.play()
-        startPositionUpdates()
+        ensurePlaybackService()
+        val player = getOrCreatePlayer()
+        fadeInAndRun(player) { player.play() }
     }
 
     fun pause() {
-        exoPlayer?.pause()
-        stopPositionUpdates()
-        updatePlayingState()
+        val player = exoPlayer ?: return
+        fadeOutAndRun(player) {
+            player.pause()
+            restoreDefaultVolume(player)
+            stopPositionUpdates()
+            updatePlayingState()
+        }
     }
 
     fun skipNext() {
@@ -157,17 +199,31 @@ class PlaybackManager @Inject constructor(
 
     fun stop() {
         reportTrackCompletion(false)
-        exoPlayer?.stop()
-        exoPlayer?.clearMediaItems()
-        stopPositionUpdates()
-        _playbackState.value = PlaybackState.Idle
+        val player = exoPlayer ?: run {
+            queueManager.clear()
+            _playbackState.value = PlaybackState.Idle
+            return
+        }
+
+        fadeOutAndRun(player) {
+            player.stop()
+            player.clearMediaItems()
+            restoreDefaultVolume(player)
+            queueManager.clear()
+            stopPositionUpdates()
+            _playbackState.value = PlaybackState.Idle
+        }
     }
 
     fun release() {
-        stop()
+        cancelFade(resetVolume = false)
+        stopPositionUpdates()
+        unregisterOutputMonitor()
         exoPlayer?.removeListener(playerListener)
         exoPlayer?.release()
         exoPlayer = null
+        queueManager.clear()
+        _playbackState.value = PlaybackState.Idle
     }
 
     private fun handleTrackEnded() {
@@ -179,8 +235,12 @@ class PlaybackManager @Inject constructor(
             }
             RepeatMode.ALL, RepeatMode.OFF -> {
                 if (queueManager.hasNext || _repeatMode == RepeatMode.ALL) {
-                    skipNext()
+                    val next = queueManager.skipToNext()
+                    if (next != null) {
+                        playTrack(next)
+                    }
                 } else {
+                    queueManager.clear()
                     _playbackState.value = PlaybackState.Idle
                     stopPositionUpdates()
                 }
@@ -191,12 +251,23 @@ class PlaybackManager @Inject constructor(
     private fun reportTrackCompletion(completed: Boolean) {
         val track = queueManager.currentTrack ?: return
         val duration = System.currentTimeMillis() - trackStartTime
-        onTrackCompleted?.invoke(track.id, duration)
+        if (completed || duration > 0L) {
+            onTrackCompleted?.invoke(track.id, duration)
+        }
     }
 
     private fun updatePlayingState() {
-        val player = exoPlayer ?: return
-        val track = queueManager.currentTrack ?: return
+        val player = exoPlayer ?: run {
+            _playbackState.value = PlaybackState.Idle
+            return
+        }
+        val track = queueManager.currentTrack ?: run {
+            if (player.mediaItemCount == 0) {
+                _playbackState.value = PlaybackState.Idle
+            }
+            return
+        }
+
         _playbackState.value = if (player.isPlaying) {
             PlaybackState.Playing(
                 track = track,
@@ -231,5 +302,100 @@ class PlaybackManager @Inject constructor(
     private fun stopPositionUpdates() {
         positionUpdateJob?.cancel()
         positionUpdateJob = null
+    }
+
+    private fun fadeInAndRun(player: ExoPlayer, onStart: () -> Unit) {
+        cancelFade(resetVolume = false)
+        fadeJob = scope.launch {
+            try {
+                player.volume = 0f
+                onStart()
+                startPositionUpdates()
+                repeat(VOLUME_FADE_STEPS) { step ->
+                    player.volume = (step + 1) / VOLUME_FADE_STEPS.toFloat()
+                    delay(VOLUME_FADE_STEP_DELAY_MS)
+                }
+                restoreDefaultVolume(player)
+                updatePlayingState()
+            } finally {
+                fadeJob = null
+            }
+        }
+    }
+
+    private fun fadeOutAndRun(player: ExoPlayer, onComplete: () -> Unit) {
+        cancelFade(resetVolume = false)
+        if (!player.isPlaying && !player.playWhenReady) {
+            onComplete()
+            return
+        }
+
+        fadeJob = scope.launch {
+            try {
+                val startVolume = player.volume.coerceIn(0f, DEFAULT_VOLUME)
+                repeat(VOLUME_FADE_STEPS) { step ->
+                    val remaining = 1f - ((step + 1) / VOLUME_FADE_STEPS.toFloat())
+                    player.volume = startVolume * remaining
+                    delay(VOLUME_FADE_STEP_DELAY_MS)
+                }
+                onComplete()
+            } finally {
+                fadeJob = null
+            }
+        }
+    }
+
+    private fun cancelFade(resetVolume: Boolean = true) {
+        fadeJob?.cancel()
+        fadeJob = null
+        if (resetVolume) {
+            exoPlayer?.let(::restoreDefaultVolume)
+        }
+    }
+
+    private fun restoreDefaultVolume(player: ExoPlayer) {
+        player.volume = DEFAULT_VOLUME
+    }
+
+    @SuppressLint("UnsafeOptInUsageError")
+    private fun ensurePlaybackService() {
+        val intent = Intent(context, PlaybackService::class.java)
+        ContextCompat.startForegroundService(context, intent)
+    }
+
+    private fun registerOutputMonitor() {
+        if (outputMonitorRegistered) return
+        audioManager?.registerAudioDeviceCallback(audioDeviceCallback, null)
+        outputMonitorRegistered = true
+    }
+
+    private fun unregisterOutputMonitor() {
+        if (!outputMonitorRegistered) return
+        audioManager?.unregisterAudioDeviceCallback(audioDeviceCallback)
+        outputMonitorRegistered = false
+    }
+
+    private fun isExternalPlaybackDevice(device: AudioDeviceInfo): Boolean {
+        return when (device.type) {
+            AudioDeviceInfo.TYPE_WIRED_HEADSET,
+            AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+            AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+            AudioDeviceInfo.TYPE_BLE_HEADSET,
+            AudioDeviceInfo.TYPE_BLE_SPEAKER,
+            AudioDeviceInfo.TYPE_HEARING_AID,
+            AudioDeviceInfo.TYPE_USB_DEVICE,
+            AudioDeviceInfo.TYPE_USB_HEADSET,
+            AudioDeviceInfo.TYPE_LINE_ANALOG,
+            AudioDeviceInfo.TYPE_LINE_DIGITAL,
+            AudioDeviceInfo.TYPE_AUX_LINE -> true
+            else -> false
+        }
+    }
+
+    companion object {
+        private const val DEFAULT_VOLUME = 1f
+        private const val VOLUME_FADE_STEPS = 8
+        private const val VOLUME_FADE_STEP_DELAY_MS = 18L
     }
 }

@@ -8,9 +8,18 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
-val versionMajor = 1
-val versionMinor = 2
-val versionPatch = 0
+val versionPropertiesFile = rootProject.file("version.properties")
+val versionProperties = Properties().apply {
+    versionPropertiesFile.inputStream().use { load(it) }
+}
+
+fun Properties.requiredInt(key: String): Int =
+    getProperty(key)?.toIntOrNull()
+        ?: error("Missing or invalid integer for $key in ${versionPropertiesFile.path}")
+
+val versionMajor = versionProperties.requiredInt("VERSION_MAJOR")
+val versionMinor = versionProperties.requiredInt("VERSION_MINOR")
+val versionPatch = versionProperties.requiredInt("VERSION_PATCH")
 
 // Load keystore properties if available
 val keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -19,6 +28,22 @@ val keystoreProperties = Properties().apply {
         keystorePropertiesFile.inputStream().use { load(it) }
     }
 }
+
+fun signingValue(propertyName: String, envName: String): String? =
+    providers.environmentVariable(envName).orNull
+        ?: keystoreProperties.getProperty(propertyName)
+
+val releaseStoreFile = signingValue("storeFile", "YAMP_KEYSTORE_FILE")
+val releaseStorePassword = signingValue("storePassword", "YAMP_KEYSTORE_PASSWORD")
+val releaseKeyAlias = signingValue("keyAlias", "YAMP_KEY_ALIAS")
+val releaseKeyPassword = signingValue("keyPassword", "YAMP_KEY_PASSWORD")
+val releaseStoreFileHandle = releaseStoreFile?.let { file(it) }
+val hasReleaseSigningConfig = listOf(
+    releaseStoreFileHandle?.takeIf { it.exists() }?.path,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword
+).all { !it.isNullOrBlank() }
 
 android {
     namespace = "com.yamp"
@@ -39,12 +64,12 @@ android {
     }
 
     signingConfigs {
-        if (keystorePropertiesFile.exists()) {
+        if (hasReleaseSigningConfig) {
             create("release") {
-                storeFile = rootProject.file(keystoreProperties["storeFile"] as String)
-                storePassword = keystoreProperties["storePassword"] as String
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = checkNotNull(releaseStoreFileHandle)
+                storePassword = checkNotNull(releaseStorePassword)
+                keyAlias = checkNotNull(releaseKeyAlias)
+                keyPassword = checkNotNull(releaseKeyPassword)
             }
         }
     }
@@ -57,7 +82,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            if (keystorePropertiesFile.exists()) {
+            if (hasReleaseSigningConfig) {
                 signingConfig = signingConfigs.getByName("release")
             }
         }

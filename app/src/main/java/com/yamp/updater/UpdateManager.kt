@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.util.Log
+import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -61,11 +62,12 @@ class UpdateManager @Inject constructor(
             addAction(UpdateDownloadService.ACTION_DOWNLOAD_COMPLETE)
             addAction(UpdateDownloadService.ACTION_DOWNLOAD_FAILED)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(downloadReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            context.registerReceiver(downloadReceiver, filter)
-        }
+        ContextCompat.registerReceiver(
+            context,
+            downloadReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
 
         // Clean up old downloads on startup
         updateInstaller.cleanupOldUpdates(context)

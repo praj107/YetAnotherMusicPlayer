@@ -1,13 +1,27 @@
 package com.yamp.player
 
+import android.annotation.SuppressLint
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 
+@SuppressLint("UnsafeOptInUsageError")
 class QueueForwardingPlayer(
     private val exoPlayer: ExoPlayer,
     private val playbackManager: PlaybackManager
 ) : ForwardingPlayer(exoPlayer) {
+
+    override fun play() {
+        playbackManager.play()
+    }
+
+    override fun pause() {
+        playbackManager.pause()
+    }
+
+    override fun stop() {
+        playbackManager.stop()
+    }
 
     override fun getAvailableCommands(): Player.Commands {
         return Player.Commands.Builder()

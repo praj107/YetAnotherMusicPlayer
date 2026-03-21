@@ -1,0 +1,23 @@
+jenkins:
+  systemMessage: "YAMP CI/CD controller managed from SCM.\n"
+  numExecutors: 2
+  mode: NORMAL
+  projectNamingStrategy: "standard"
+  crumbIssuer:
+    standard:
+      excludeClientIPFromCrumb: false
+  globalNodeProperties:
+    - envVars:
+        env:
+          - key: "ANDROID_SDK_ROOT"
+            value: "${ANDROID_SDK_ROOT}"
+          - key: "ANDROID_HOME"
+            value: "${ANDROID_SDK_ROOT}"
+          - key: "JAVA_HOME"
+            value: "/usr/lib/jvm/java-21-openjdk-amd64"
+          - key: "GRADLE_OPTS"
+            value: "-Dorg.gradle.daemon=false"
+
+unclassified:
+  location:
+    url: "${JENKINS_URL}"

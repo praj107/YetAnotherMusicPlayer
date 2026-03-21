@@ -3,4 +3,5 @@
     <string name="app_name">YAMP</string>
     <string name="notification_channel_name">Playback</string>
     <string name="notification_channel_description">Music playback controls</string>
+    <string name="playback_stop">Stop</string>
 </resources>

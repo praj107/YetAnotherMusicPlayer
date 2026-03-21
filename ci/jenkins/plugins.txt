@@ -1,0 +1,13 @@
+configuration-as-code
+credentials-binding
+git
+github-branch-source
+job-dsl
+junit
+mailer
+matrix-auth
+pipeline-stage-view
+timestamper
+warnings-ng
+workflow-aggregator
+ws-cleanup
