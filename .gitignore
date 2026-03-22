@@ -21,3 +21,5 @@ keystore.properties
 /keystore/
 !gradle/wrapper/gradle-wrapper.jar
 /releases/
+__pycache__/
+*.pyc

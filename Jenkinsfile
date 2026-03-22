@@ -190,10 +190,10 @@ pipeline {
             archiveArtifacts allowEmptyArchive: true, artifacts: 'app/build/reports/**, releases/**'
             script {
                 if (fileExists('app/build/reports/lint-results-debug.xml')) {
-                    recordIssues enabledForFailure: true, tools: [androidLint(pattern: 'app/build/reports/lint-results-debug.xml')]
+                    recordIssues enabledForFailure: true, tools: [androidLintParser(pattern: 'app/build/reports/lint-results-debug.xml')]
                 }
                 if (fileExists('app/build/reports/lint-results-release.xml')) {
-                    recordIssues enabledForFailure: true, tools: [androidLint(pattern: 'app/build/reports/lint-results-release.xml')]
+                    recordIssues enabledForFailure: true, tools: [androidLintParser(pattern: 'app/build/reports/lint-results-release.xml')]
                 }
             }
             cleanWs deleteDirs: true, disableDeferredWipeout: true

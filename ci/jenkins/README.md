@@ -2,12 +2,24 @@
 
 This repo now treats Jenkins as the authoritative release path. The legacy `scripts/build-release.sh` wrapper remains only as a local fallback and calls the same shared release primitives that the controller runs.
 
+## Operations Tool
+
+Use [scripts/jenkinsctl.py](/home/pranav/Desktop/ProgrammingProject/YetAnotherMusicPlayer/scripts/jenkinsctl.py) for day-to-day controller work instead of raw `curl` calls. It reads `JENKINS_USERNAME` and `JENKINS_TOKEN` from the repo `.env` file by default and supports:
+
+- auth validation with `python3 scripts/jenkinsctl.py login`
+- controller inventory with `python3 scripts/jenkinsctl.py jobs` and `python3 scripts/jenkinsctl.py queue`
+- pipeline inspection with `python3 scripts/jenkinsctl.py job-info YetAnotherMusicPlayer-CI`
+- build history and logs with `python3 scripts/jenkinsctl.py builds YetAnotherMusicPlayer-CI`, `build-info`, and `console`
+- live execution with `python3 scripts/jenkinsctl.py trigger YetAnotherMusicPlayer-CI --param RELEASE_TYPE=ci --wait --follow`
+- admin/script-console automation with `python3 scripts/jenkinsctl.py script --file /path/to/script.groovy`
+
 ## What Changed
 
 - `Jenkinsfile` provides a declarative Android pipeline with checkout, bootstrap, quality gates, optional connected tests, signed release packaging, tagging, and GitHub Release publishing.
 - `version.properties` is now the single source of truth for app versioning. Jenkins bumps that file instead of editing `app/build.gradle.kts`.
 - `app/build.gradle.kts` now supports release signing from Jenkins credentials via environment variables, so the controller no longer depends on a committed `keystore.properties`.
 - `scripts/ci/*.sh` contains reusable versioning, packaging, and GitHub release publishing logic shared by Jenkins and local fallback runs.
+- `scripts/jenkinsctl.py` provides a repo-owned Jenkins client for authentication, queue/build control, log streaming, and script-console tasks.
 
 ## Local Findings
 
