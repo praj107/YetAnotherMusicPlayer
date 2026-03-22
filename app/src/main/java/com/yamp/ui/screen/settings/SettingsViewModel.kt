@@ -122,6 +122,9 @@ class SettingsViewModel @Inject constructor(
     fun getCrashIssueIntent(report: com.yamp.crash.PendingCrashReport): Intent =
         crashReporter.buildIssueIntent(report)
 
+    fun copyCrashReportToClipboard(report: com.yamp.crash.PendingCrashReport): Boolean =
+        crashReporter.copyReportToClipboard(report)
+
     fun getCrashShareIntent(report: com.yamp.crash.PendingCrashReport): Intent? =
         crashReporter.buildShareIntent(report)
 

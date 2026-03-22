@@ -14,6 +14,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.yamp.crash.YampDiagnostics
 import com.yamp.domain.model.Track
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -116,33 +117,28 @@ class PlaybackManager @Inject constructor(
             queueManager.setQueue(queue, startIndex)
         }
 
-        ensurePlaybackService()
         val player = getOrCreatePlayer()
         cancelFade(resetVolume = true)
 
-        val mediaItem = MediaItem.Builder()
-            .setUri(Uri.parse(track.contentUri))
-            .setMediaId(track.id.toString())
-            .setMediaMetadata(
-                MediaMetadata.Builder()
-                    .setTitle(track.title)
-                    .setArtist(track.artist)
-                    .setAlbumTitle(track.album)
-                    .setArtworkUri(track.albumArtUri?.let { Uri.parse(it) })
-                    .build()
-            )
-            .build()
-
-        player.setMediaItem(mediaItem)
+        player.setMediaItem(buildMediaItem(track))
         player.prepare()
+        ensurePlaybackService(player)
         trackStartTime = System.currentTimeMillis()
         onTrackStarted?.invoke(track.id)
         fadeInAndRun(player) { player.play() }
     }
 
     fun play() {
-        ensurePlaybackService()
         val player = getOrCreatePlayer()
+        if (player.mediaItemCount == 0) {
+            val currentTrack = queueManager.currentTrack ?: run {
+                YampDiagnostics.w(TAG, "Ignoring play() with no prepared media item")
+                return
+            }
+            player.setMediaItem(buildMediaItem(currentTrack))
+            player.prepare()
+        }
+        ensurePlaybackService(player)
         fadeInAndRun(player) { player.play() }
     }
 
@@ -357,10 +353,29 @@ class PlaybackManager @Inject constructor(
         player.volume = DEFAULT_VOLUME
     }
 
+    private fun buildMediaItem(track: Track): MediaItem =
+        MediaItem.Builder()
+            .setUri(Uri.parse(track.contentUri))
+            .setMediaId(track.id.toString())
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(track.title)
+                    .setArtist(track.artist)
+                    .setAlbumTitle(track.album)
+                    .setArtworkUri(track.albumArtUri?.let { Uri.parse(it) })
+                    .build()
+            )
+            .build()
+
     @SuppressLint("UnsafeOptInUsageError")
-    private fun ensurePlaybackService() {
+    private fun ensurePlaybackService(player: Player) {
+        if (player.mediaItemCount == 0) {
+            YampDiagnostics.w(TAG, "Skipped playback service start because the player has no media item")
+            return
+        }
         val intent = Intent(context, PlaybackService::class.java)
         ContextCompat.startForegroundService(context, intent)
+        YampDiagnostics.i(TAG, "Requested playback service start for ${player.mediaItemCount} prepared item(s)")
     }
 
     private fun registerOutputMonitor() {
@@ -394,6 +409,7 @@ class PlaybackManager @Inject constructor(
     }
 
     companion object {
+        private const val TAG = "PlaybackManager"
         private const val DEFAULT_VOLUME = 1f
         private const val VOLUME_FADE_STEPS = 8
         private const val VOLUME_FADE_STEP_DELAY_MS = 18L

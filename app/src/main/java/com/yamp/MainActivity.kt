@@ -2,6 +2,7 @@ package com.yamp
 
 import android.media.AudioManager
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -95,6 +96,14 @@ class MainActivity : ComponentActivity() {
                         CrashReportDialog(
                             report = report,
                             onOpenIssue = {
+                                val copied = crashReporter.copyReportToClipboard(report)
+                                if (copied) {
+                                    Toast.makeText(
+                                        context,
+                                        "Crash report copied to clipboard for quick paste.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
                                 context.startActivity(crashReporter.buildIssueIntent(report))
                             },
                             onShareReport = {

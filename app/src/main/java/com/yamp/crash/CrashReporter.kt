@@ -2,6 +2,8 @@ package com.yamp.crash
 
 import android.app.ActivityManager
 import android.app.ApplicationExitInfo
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -27,6 +29,7 @@ class CrashReporter @Inject constructor(
     companion object {
         private const val TAG = "CrashReporter"
         private const val ISSUE_URL = "https://github.com/praj107/YetAnotherMusicPlayer/issues/new"
+        private const val ISSUE_REPORT_PREVIEW_LIMIT = 1_200
     }
 
     private val reportsDir = File(context.filesDir, "diagnostics")
@@ -69,6 +72,12 @@ class CrashReporter @Inject constructor(
     }
 
     fun buildIssueIntent(report: PendingCrashReport): Intent {
+        val reportPreview = readReportText(report)
+            .lineSequence()
+            .take(18)
+            .joinToString("\n")
+            .take(ISSUE_REPORT_PREVIEW_LIMIT)
+
         val issueBody = buildString {
             appendLine("### Crash Summary")
             appendLine("- Detected: ${formatTimestamp(report.detectedAt)}")
@@ -80,7 +89,18 @@ class CrashReporter @Inject constructor(
             appendLine(report.summary)
             appendLine()
             appendLine("### Diagnostics")
-            appendLine("A diagnostics report was generated locally. Please attach the shared report file from the app's crash reporter dialog if possible.")
+            appendLine("The app also copies the full diagnostics report to the clipboard when you choose Open Issue.")
+            appendLine("GitHub's prefilled issue URLs support the title/body fields, but they do not support auto-attaching a local file.")
+            if (reportPreview.isNotBlank()) {
+                appendLine()
+                appendLine("<details>")
+                appendLine("<summary>Crash report preview</summary>")
+                appendLine()
+                appendLine("```text")
+                appendLine(reportPreview)
+                appendLine("```")
+                appendLine("</details>")
+            }
         }
 
         val uri = Uri.parse(ISSUE_URL).buildUpon()
@@ -90,6 +110,20 @@ class CrashReporter @Inject constructor(
             .build()
 
         return Intent(Intent.ACTION_VIEW, uri)
+    }
+
+    fun copyReportToClipboard(report: PendingCrashReport): Boolean {
+        val clipboard = context.getSystemService(ClipboardManager::class.java) ?: return false
+        val reportText = readReportText(report)
+        if (reportText.isBlank()) return false
+
+        clipboard.setPrimaryClip(
+            ClipData.newPlainText(
+                "YAMP crash report",
+                reportText
+            )
+        )
+        return true
     }
 
     fun buildShareIntent(report: PendingCrashReport): Intent? {
@@ -106,6 +140,7 @@ class CrashReporter @Inject constructor(
             type = "text/plain"
             putExtra(Intent.EXTRA_SUBJECT, "YAMP crash report ${formatTimestamp(report.detectedAt)}")
             putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_TEXT, readReportText(report))
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
     }
@@ -213,4 +248,10 @@ class CrashReporter @Inject constructor(
 
     private fun formatTimestamp(timestamp: Long): String =
         timestampFormat.format(Date(timestamp))
+
+    private fun readReportText(report: PendingCrashReport): String {
+        val file = File(report.filePath)
+        if (!file.exists()) return ""
+        return file.readText()
+    }
 }
