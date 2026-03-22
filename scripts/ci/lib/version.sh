@@ -32,6 +32,15 @@ version_name() {
     printf '%s.%s.%s\n' "$(version_major)" "$(version_minor)" "$(version_patch)"
 }
 
+version_write_name() {
+    local version_name="$1"
+    if [[ ! "$version_name" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+        echo "Invalid semantic version: $version_name" >&2
+        exit 1
+    fi
+    version_write "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"
+}
+
 version_code() {
     printf '%s\n' "$(( $(version_major) * 10000 + $(version_minor) * 100 + $(version_patch) ))"
 }

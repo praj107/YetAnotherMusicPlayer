@@ -13,9 +13,9 @@ pipeline {
 
     parameters {
         booleanParam(
-            name: 'RUN_LINT',
+            name: 'RUN_UNIT_TESTS',
             defaultValue: true,
-            description: 'Run Android lint as part of the quality gate.'
+            description: 'Run JVM unit tests before connected-device validation.'
         )
         string(
             name: 'ANDROID_SDK_ROOT_OVERRIDE',
@@ -45,23 +45,29 @@ pipeline {
                     def versionInfo = helpers.currentVersion(this)
                     env.RELEASE_VERSION = versionInfo.VERSION_NAME
                     env.RELEASE_TAG = versionInfo.VERSION_TAG
-                    currentBuild.displayName = "#${env.BUILD_NUMBER} verify ${env.RELEASE_TAG}"
+                    currentBuild.displayName = "#${env.BUILD_NUMBER} connected ${env.RELEASE_TAG}"
                 }
             }
         }
 
-        stage('Quality Gates') {
+        stage('Preflight Build') {
             steps {
-                sh './gradlew --no-daemon clean testDebugUnitTest assembleDebug'
+                sh './gradlew --no-daemon clean assembleDebug assembleDebugAndroidTest'
             }
         }
 
-        stage('Lint') {
+        stage('Unit Tests') {
             when {
-                expression { return params.RUN_LINT }
+                expression { return params.RUN_UNIT_TESTS }
             }
             steps {
-                sh './gradlew --no-daemon lintDebug lintRelease'
+                sh './gradlew --no-daemon testDebugUnitTest'
+            }
+        }
+
+        stage('Connected Tests') {
+            steps {
+                sh './gradlew --no-daemon connectedDebugAndroidTest'
             }
         }
     }
@@ -70,10 +76,10 @@ pipeline {
         always {
             script {
                 if (helpers != null) {
-                    helpers.publishReports(this, false, false)
+                    helpers.publishReports(this, false, true)
                 } else {
-                    junit allowEmptyResults: true, testResults: 'app/build/test-results/testDebugUnitTest/*.xml'
-                    archiveArtifacts allowEmptyArchive: true, artifacts: 'app/build/reports/**'
+                    junit allowEmptyResults: true, testResults: 'app/build/test-results/testDebugUnitTest/*.xml, app/build/outputs/androidTest-results/**/*.xml'
+                    archiveArtifacts allowEmptyArchive: true, artifacts: 'app/build/reports/**, app/build/outputs/androidTest-results/**'
                 }
             }
             cleanWs deleteDirs: true, disableDeferredWipeout: true

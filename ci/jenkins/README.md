@@ -10,28 +10,37 @@ Use [scripts/jenkinsctl.py](/home/pranav/Desktop/ProgrammingProject/YetAnotherMu
 - controller inventory with `python3 scripts/jenkinsctl.py jobs` and `python3 scripts/jenkinsctl.py queue`
 - pipeline inspection with `python3 scripts/jenkinsctl.py job-info YetAnotherMusicPlayer-CI`
 - build history and logs with `python3 scripts/jenkinsctl.py builds YetAnotherMusicPlayer-CI`, `build-info`, and `console`
-- live execution with `python3 scripts/jenkinsctl.py trigger YetAnotherMusicPlayer-CI --param RELEASE_TYPE=ci --wait --follow`
+- live execution with `python3 scripts/jenkinsctl.py trigger YetAnotherMusicPlayer-CI --wait --follow`
+- full release execution with `python3 scripts/jenkinsctl.py trigger YetAnotherMusicPlayer-Release --param RELEASE_TYPE=patch --wait --follow`
 - admin/script-console automation with `python3 scripts/jenkinsctl.py script --file /path/to/script.groovy`
 
 ## What Changed
 
-- `Jenkinsfile` provides a declarative Android pipeline with checkout, bootstrap, quality gates, optional connected tests, signed release packaging, tagging, and GitHub Release publishing.
+- `Jenkinsfile` is now the dedicated verification pipeline for unit tests, lint, and debug assembly.
+- [connected.Jenkinsfile](/home/pranav/Desktop/ProgrammingProject/YetAnotherMusicPlayer/ci/jenkins/pipelines/connected.Jenkinsfile) provides a dedicated device/emulator instrumentation pipeline.
+- [release.Jenkinsfile](/home/pranav/Desktop/ProgrammingProject/YetAnotherMusicPlayer/ci/jenkins/pipelines/release.Jenkinsfile) provides the signed release, tag, push, and GitHub Release workflow.
+- [helpers.groovy](/home/pranav/Desktop/ProgrammingProject/YetAnotherMusicPlayer/ci/jenkins/pipelines/helpers.groovy) centralizes common bootstrap and report-publishing logic shared by all Jenkins pipelines.
+- [bootstrap.groovy](/home/pranav/Desktop/ProgrammingProject/YetAnotherMusicPlayer/ci/jenkins/jobs/bootstrap.groovy) is the repo-owned live-job bootstrap for the controller.
 - `version.properties` is now the single source of truth for app versioning. Jenkins bumps that file instead of editing `app/build.gradle.kts`.
 - `app/build.gradle.kts` now supports release signing from Jenkins credentials via environment variables, so the controller no longer depends on a committed `keystore.properties`.
 - `scripts/ci/*.sh` contains reusable versioning, packaging, and GitHub release publishing logic shared by Jenkins and local fallback runs.
+- `scripts/ci/set-version.sh` provides an explicit semantic-version baseline setter for backfills and release-line synchronization.
 - `scripts/jenkinsctl.py` provides a repo-owned Jenkins client for authentication, queue/build control, log streaming, and script-console tasks.
 
-## Local Findings
+## Current State
 
-The existing install on this machine is a fresh Debian-package controller:
+The controller baseline expected by this repo is now:
 
 - Jenkins `2.541.3`
 - Service account: `jenkins`
-- No plugins are installed in `/var/lib/jenkins/plugins`
-- Package service expects Java 17/21/25; shell `java` currently points to Java 22, which is unsupported for Jenkins CLI invocations
-- The controller user cannot traverse `/home/pranav`, so it cannot currently read `/home/pranav/Android/Sdk`
-
-That last point is the main environment blocker for Android builds from Jenkins.
+- Java 21 runtime/toolchain available to Jenkins
+- Android SDK and build-tools accessible to the `jenkins` user
+- GitHub token and Android signing credentials present in Jenkins credentials
+- Split jobs managed from repo state:
+  - `YetAnotherMusicPlayer-CI`
+  - `YetAnotherMusicPlayer-Connected`
+  - `YetAnotherMusicPlayer-Release`
+- Current release-line baseline: `2.0.1`
 
 ## Controller Setup
 
@@ -47,17 +56,17 @@ That last point is the main environment blocker for Android builds from Jenkins.
    - `yamp-keystore-password` as Secret text
    - `yamp-key-alias` as Secret text
    - `yamp-key-password` as Secret text
-8. Create a Multibranch Pipeline job pointed at `https://github.com/praj107/YetAnotherMusicPlayer.git`.
+8. Apply [bootstrap.groovy](/home/pranav/Desktop/ProgrammingProject/YetAnotherMusicPlayer/ci/jenkins/jobs/bootstrap.groovy) with `python3 scripts/jenkinsctl.py script --file ci/jenkins/jobs/bootstrap.groovy`.
 
 ## First Release Run
 
-Use these parameters on the Jenkins job:
+Use these parameters on `YetAnotherMusicPlayer-Release`:
 
 - `RELEASE_TYPE=patch|minor|major|chore`
 - `RUN_LINT=true`
 - `RUN_CONNECTED_TESTS=false` unless an emulator/device is attached
 
-The pipeline will:
+The release pipeline will:
 
 - bump `version.properties`
 - run unit tests and lint
@@ -66,3 +75,5 @@ The pipeline will:
 - commit the version bump
 - tag the release
 - publish the GitHub Release assets used by the in-app updater
+
+Use `RELEASE_TYPE=chore` when you need to publish the current semantic version without incrementing it, for example when catching the repo back up to an already-shipped feature release line.
