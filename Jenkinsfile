@@ -189,15 +189,21 @@ pipeline {
             junit allowEmptyResults: true, testResults: 'app/build/test-results/testDebugUnitTest/*.xml'
             archiveArtifacts allowEmptyArchive: true, artifacts: 'app/build/reports/**, releases/**'
             script {
-                def lintTools = []
                 if (fileExists('app/build/reports/lint-results-debug.xml')) {
-                    lintTools << androidLintParser(pattern: 'app/build/reports/lint-results-debug.xml')
+                    recordIssues(
+                        enabledForFailure: true,
+                        id: 'android-lint-debug',
+                        name: 'Android Lint Debug',
+                        tools: [androidLintParser(pattern: 'app/build/reports/lint-results-debug.xml')]
+                    )
                 }
                 if (fileExists('app/build/reports/lint-results-release.xml')) {
-                    lintTools << androidLintParser(pattern: 'app/build/reports/lint-results-release.xml')
-                }
-                if (!lintTools.isEmpty()) {
-                    recordIssues enabledForFailure: true, id: 'android-lint', name: 'Android Lint', tools: lintTools
+                    recordIssues(
+                        enabledForFailure: true,
+                        id: 'android-lint-release',
+                        name: 'Android Lint Release',
+                        tools: [androidLintParser(pattern: 'app/build/reports/lint-results-release.xml')]
+                    )
                 }
             }
             cleanWs deleteDirs: true, disableDeferredWipeout: true
