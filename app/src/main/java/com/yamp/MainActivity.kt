@@ -18,14 +18,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.yamp.crash.CrashReporter
 import com.yamp.player.PlaybackManager
 import com.yamp.player.PlaybackState
 import com.yamp.player.currentTrack
 import com.yamp.player.isPlaying
 import com.yamp.ui.components.BottomPlayerSheet
+import com.yamp.ui.components.CrashReportDialog
 import com.yamp.ui.navigation.BottomNavBar
 import com.yamp.ui.navigation.YampNavHost
 import com.yamp.ui.theme.DarkBackground
@@ -44,6 +47,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var updateManager: UpdateManager
 
+    @Inject
+    lateinit var crashReporter: CrashReporter
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -58,10 +64,12 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             YampTheme {
+                val context = LocalContext.current
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
                 val pbState by playbackManager.playbackState.collectAsState()
+                val pendingCrashReport by crashReporter.pendingReport.collectAsState()
 
                 val currentTrack = pbState.currentTrack
                 val isPlaying = pbState.isPlaying
@@ -83,6 +91,26 @@ class MainActivity : ComponentActivity() {
                         .background(DarkBackground)
                         .windowInsetsPadding(WindowInsets.systemBars)
                 ) {
+                    pendingCrashReport?.let { report ->
+                        CrashReportDialog(
+                            report = report,
+                            onOpenIssue = {
+                                context.startActivity(crashReporter.buildIssueIntent(report))
+                            },
+                            onShareReport = {
+                                crashReporter.buildShareIntent(report)?.let { shareIntent ->
+                                    context.startActivity(
+                                        android.content.Intent.createChooser(
+                                            shareIntent,
+                                            "Share crash report"
+                                        )
+                                    )
+                                }
+                            },
+                            onDismiss = crashReporter::dismissPendingReport
+                        )
+                    }
+
                     Column(modifier = Modifier.fillMaxSize()) {
                         // Main content fills remaining space
                         Box(modifier = Modifier.weight(1f)) {

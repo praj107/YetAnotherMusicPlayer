@@ -13,7 +13,9 @@ data class Track(
     val year: Int?,
     val mimeType: String,
     val folderPath: String,
-    val metadataComplete: Boolean
+    val metadataComplete: Boolean,
+    val sourcePath: String = "",
+    val fileHash: String? = null
 ) {
     val durationFormatted: String
         get() {

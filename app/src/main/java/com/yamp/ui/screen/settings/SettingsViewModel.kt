@@ -1,38 +1,37 @@
 package com.yamp.ui.screen.settings
 
-import android.content.Context
 import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.yamp.data.local.datastore.UserPreferences
-import com.yamp.data.local.datastore.dataStore
+import com.yamp.crash.CrashReporter
 import com.yamp.data.repository.MetadataRepository
 import com.yamp.data.repository.TrackRepository
+import com.yamp.data.repository.UserPreferencesRepository
 import com.yamp.domain.usecase.metadata.FetchMetadataUseCase
 import com.yamp.domain.usecase.scan.ScanDeviceUseCase
 import com.yamp.ui.state.SettingsUiState
 import com.yamp.updater.UpdateManager
 import com.yamp.updater.UpdateState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    @ApplicationContext context: Context,
     private val scanDeviceUseCase: ScanDeviceUseCase,
     private val fetchMetadataUseCase: FetchMetadataUseCase,
     private val trackRepository: TrackRepository,
     private val metadataRepository: MetadataRepository,
-    private val updateManager: UpdateManager
+    private val updateManager: UpdateManager,
+    private val crashReporter: CrashReporter,
+    private val userPreferences: UserPreferencesRepository
 ) : ViewModel() {
 
-    private val userPreferences = UserPreferences(context.dataStore)
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
@@ -47,6 +46,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             updateManager.state.collect { state ->
                 _uiState.update { it.copy(updateState = state) }
+            }
+        }
+        viewModelScope.launch {
+            crashReporter.pendingReport.collect { report ->
+                _uiState.update { it.copy(pendingCrashReport = report) }
             }
         }
         loadStats()
@@ -69,6 +73,9 @@ class SettingsViewModel @Inject constructor(
     fun onRescanLibrary() {
         viewModelScope.launch {
             scanDeviceUseCase()
+            if (userPreferences.autoFetchMetadata.first()) {
+                fetchMetadataUseCase { _, _ -> }
+            }
             loadStats()
         }
     }
@@ -107,6 +114,16 @@ class SettingsViewModel @Inject constructor(
     fun onDismissUpdate() {
         updateManager.dismiss()
     }
+
+    fun onDismissCrashReport() {
+        crashReporter.dismissPendingReport()
+    }
+
+    fun getCrashIssueIntent(report: com.yamp.crash.PendingCrashReport): Intent =
+        crashReporter.buildIssueIntent(report)
+
+    fun getCrashShareIntent(report: com.yamp.crash.PendingCrashReport): Intent? =
+        crashReporter.buildShareIntent(report)
 
     fun canInstallPackages(): Boolean = updateManager.canInstallPackages()
 

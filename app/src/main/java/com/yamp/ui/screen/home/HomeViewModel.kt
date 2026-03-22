@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yamp.data.repository.PlaylistRepository
 import com.yamp.data.repository.TrackRepository
+import com.yamp.data.repository.UserPreferencesRepository
+import com.yamp.domain.usecase.metadata.FetchMetadataUseCase
 import com.yamp.domain.usecase.recommendation.GetRecommendedNextUseCase
 import com.yamp.domain.usecase.scan.ScanDeviceUseCase
 import com.yamp.ui.state.HomeUiState
@@ -11,6 +13,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -20,6 +23,8 @@ class HomeViewModel @Inject constructor(
     private val scanDeviceUseCase: ScanDeviceUseCase,
     private val trackRepository: TrackRepository,
     private val playlistRepository: PlaylistRepository,
+    private val userPreferences: UserPreferencesRepository,
+    private val fetchMetadataUseCase: FetchMetadataUseCase,
     private val getRecommendedNextUseCase: GetRecommendedNextUseCase
 ) : ViewModel() {
 
@@ -41,6 +46,9 @@ class HomeViewModel @Inject constructor(
             try {
                 val count = scanDeviceUseCase()
                 _uiState.update { it.copy(isScanning = false, scanProgress = "$count tracks found") }
+                if (userPreferences.autoFetchMetadata.first()) {
+                    fetchMetadataUseCase { _, _ -> }
+                }
                 loadData()
             } catch (e: Exception) {
                 _uiState.update { it.copy(isScanning = false, error = e.message) }

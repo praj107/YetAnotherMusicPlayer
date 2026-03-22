@@ -14,11 +14,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.yamp.domain.model.Track
 import com.yamp.ui.theme.DarkCard
 import com.yamp.ui.theme.Dimensions
@@ -39,13 +36,16 @@ fun RecommendedNextCard(
         elevation = CardDefaults.cardElevation(defaultElevation = Dimensions.cardElevation)
     ) {
         Column(modifier = Modifier.padding(Dimensions.paddingMedium)) {
-            AsyncImage(
+            YampArtwork(
                 model = track.albumArtUri,
-                contentDescription = track.album,
+                title = track.title,
+                type = ArtworkType.TRACK,
                 modifier = Modifier
-                    .size(124.dp)
-                    .clip(RoundedCornerShape(12.dp)),
-                contentScale = ContentScale.Crop
+                    .size(124.dp),
+                size = 124.dp,
+                mimeType = track.mimeType,
+                sourcePath = track.sourcePath,
+                contentDescription = track.album
             )
 
             Spacer(modifier = Modifier.height(Dimensions.paddingMedium))

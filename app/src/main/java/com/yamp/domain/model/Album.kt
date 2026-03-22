@@ -6,4 +6,7 @@ data class Album(
     val albumArtUri: String?,
     val year: Int?,
     val tracks: List<Track>
-)
+) {
+    val key: String
+        get() = "$artist::$name"
+}

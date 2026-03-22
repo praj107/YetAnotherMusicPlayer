@@ -1,9 +1,16 @@
 package com.yamp.data.local.db.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "tracks")
+@Entity(
+    tableName = "tracks",
+    indices = [
+        Index("sourcePath"),
+        Index("fileHash")
+    ]
+)
 data class TrackEntity(
     @PrimaryKey val id: Long,
     val contentUri: String,
@@ -21,5 +28,7 @@ data class TrackEntity(
     val dateAdded: Long,
     val dateModified: Long,
     val musicBrainzId: String?,
-    val metadataComplete: Boolean
+    val metadataComplete: Boolean,
+    val sourcePath: String = "",
+    val fileHash: String? = null
 )

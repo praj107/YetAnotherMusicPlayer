@@ -8,17 +8,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.yamp.domain.model.Track
 import com.yamp.ui.theme.Dimensions
 import com.yamp.ui.theme.TextSecondary
@@ -29,7 +24,8 @@ fun TrackListItem(
     track: Track,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    isPlaying: Boolean = false
+    isPlaying: Boolean = false,
+    artworkType: ArtworkType = ArtworkType.TRACK
 ) {
     Row(
         modifier = modifier
@@ -38,13 +34,16 @@ fun TrackListItem(
             .padding(horizontal = Dimensions.paddingLarge, vertical = Dimensions.paddingMedium),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AsyncImage(
+        YampArtwork(
             model = track.albumArtUri,
-            contentDescription = track.album,
+            title = track.title,
+            type = artworkType,
             modifier = Modifier
-                .size(Dimensions.albumArtSmall)
-                .clip(RoundedCornerShape(8.dp)),
-            contentScale = ContentScale.Crop
+                .size(Dimensions.albumArtSmall),
+            size = Dimensions.albumArtSmall,
+            mimeType = track.mimeType,
+            sourcePath = track.sourcePath,
+            contentDescription = track.album
         )
 
         Spacer(modifier = Modifier.width(Dimensions.paddingStandard))

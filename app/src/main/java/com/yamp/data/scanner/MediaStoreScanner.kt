@@ -107,7 +107,9 @@ class MediaStoreScanner @Inject constructor(
                         dateAdded = dateAdded,
                         dateModified = dateModified,
                         musicBrainzId = null,
-                        metadataComplete = metadataComplete
+                        metadataComplete = metadataComplete,
+                        sourcePath = data,
+                        fileHash = null
                     )
                 )
             }

@@ -3,6 +3,7 @@ package com.yamp.di
 import android.content.Context
 import androidx.room.Room
 import com.yamp.data.local.db.YampDatabase
+import com.yamp.data.local.db.dao.LibraryCollectionOrderDao
 import com.yamp.data.local.db.dao.ListeningHistoryDao
 import com.yamp.data.local.db.dao.MetadataCacheDao
 import com.yamp.data.local.db.dao.PlaylistDao
@@ -25,7 +26,9 @@ object DatabaseModule {
             context,
             YampDatabase::class.java,
             "yamp_database"
-        ).build()
+        )
+            .addMigrations(YampDatabase.MIGRATION_1_2)
+            .build()
 
     @Provides
     fun provideTrackDao(db: YampDatabase): TrackDao = db.trackDao()
@@ -40,4 +43,8 @@ object DatabaseModule {
     @Provides
     fun provideMetadataCacheDao(db: YampDatabase): MetadataCacheDao =
         db.metadataCacheDao()
+
+    @Provides
+    fun provideLibraryCollectionOrderDao(db: YampDatabase): LibraryCollectionOrderDao =
+        db.libraryCollectionOrderDao()
 }

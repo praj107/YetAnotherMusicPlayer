@@ -8,6 +8,8 @@ import com.yamp.domain.model.SortField
 import com.yamp.domain.model.SortOrder
 import com.yamp.domain.model.Track
 import com.yamp.player.RepeatMode
+import com.yamp.crash.PendingCrashReport
+import com.yamp.ui.screen.library.LibraryCollectionDetail
 
 data class HomeUiState(
     val recentTracks: List<Track> = emptyList(),
@@ -26,6 +28,7 @@ data class LibraryUiState(
     val genres: List<Genre> = emptyList(),
     val currentSort: SortOrder = SortOrder(),
     val selectedTab: Int = 0,
+    val selectedCollection: LibraryCollectionDetail? = null,
     val isLoading: Boolean = false
 )
 
@@ -56,5 +59,6 @@ data class SettingsUiState(
     val metadataFetchProgress: String? = null,
     val trackCount: Int = 0,
     val incompleteMetadataCount: Int = 0,
-    val updateState: com.yamp.updater.UpdateState = com.yamp.updater.UpdateState.Idle
+    val updateState: com.yamp.updater.UpdateState = com.yamp.updater.UpdateState.Idle,
+    val pendingCrashReport: PendingCrashReport? = null
 )

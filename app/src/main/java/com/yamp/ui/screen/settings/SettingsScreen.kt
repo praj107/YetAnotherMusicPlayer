@@ -204,6 +204,87 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(Dimensions.paddingLarge))
 
+        state.pendingCrashReport?.let { report ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = DarkCard)
+            ) {
+                Column(modifier = Modifier.padding(Dimensions.paddingLarge)) {
+                    Text("Diagnostics", style = MaterialTheme.typography.titleLarge)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        report.summary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                context.startActivity(viewModel.getCrashIssueIntent(report))
+                            }
+                            .padding(vertical = 8.dp)
+                    ) {
+                        Text(
+                            "Open GitHub issue",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = AccentCyan
+                        )
+                        Text(
+                            "Pre-fills a bug report for this crash",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                viewModel.getCrashShareIntent(report)?.let { shareIntent ->
+                                    context.startActivity(
+                                        android.content.Intent.createChooser(
+                                            shareIntent,
+                                            "Share crash report"
+                                        )
+                                    )
+                                }
+                            }
+                            .padding(vertical = 8.dp)
+                    ) {
+                        Text(
+                            "Share diagnostics file",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = AccentCyan
+                        )
+                        Text(
+                            "Exports the full crash report and recent app logs",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.onDismissCrashReport() }
+                            .padding(vertical = 8.dp)
+                    ) {
+                        Text(
+                            "Dismiss crash report",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = AccentCyan
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(Dimensions.paddingLarge))
+        }
+
         // Updates
         Card(
             modifier = Modifier.fillMaxWidth(),

@@ -15,6 +15,12 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE id = :id")
     suspend fun getTrackById(id: Long): TrackEntity?
 
+    @Query("SELECT * FROM tracks")
+    suspend fun getAllTracksSnapshot(): List<TrackEntity>
+
+    @Query("SELECT * FROM tracks WHERE id IN (:ids)")
+    suspend fun getTracksByIds(ids: List<Long>): List<TrackEntity>
+
     @Query("""
         SELECT * FROM tracks
         WHERE title LIKE '%' || :query || '%'
@@ -75,8 +81,36 @@ interface TrackDao {
     @Upsert
     suspend fun upsertTracks(tracks: List<TrackEntity>)
 
-    @Query("UPDATE tracks SET musicBrainzId = :mbid, artist = COALESCE(:artist, artist), album = COALESCE(:album, album), genre = COALESCE(:genre, genre), year = COALESCE(:year, year), metadataComplete = 1 WHERE id = :trackId")
-    suspend fun updateMetadata(trackId: Long, mbid: String?, artist: String?, album: String?, genre: String?, year: Int?)
+    @Query("UPDATE tracks SET fileHash = :fileHash WHERE id = :trackId")
+    suspend fun updateFileHash(trackId: Long, fileHash: String)
+
+    @Query(
+        """
+        UPDATE tracks
+        SET fileHash = COALESCE(:fileHash, fileHash),
+            musicBrainzId = COALESCE(:mbid, musicBrainzId),
+            title = COALESCE(:title, title),
+            artist = COALESCE(:artist, artist),
+            album = COALESCE(:album, album),
+            albumArtUri = COALESCE(:albumArtUri, albumArtUri),
+            genre = COALESCE(:genre, genre),
+            year = COALESCE(:year, year),
+            metadataComplete = :metadataComplete
+        WHERE id = :trackId
+        """
+    )
+    suspend fun updateMetadata(
+        trackId: Long,
+        fileHash: String?,
+        mbid: String?,
+        title: String?,
+        artist: String?,
+        album: String?,
+        albumArtUri: String?,
+        genre: String?,
+        year: Int?,
+        metadataComplete: Boolean
+    )
 
     @Query("DELETE FROM tracks WHERE id NOT IN (:activeIds)")
     suspend fun deleteStale(activeIds: List<Long>)

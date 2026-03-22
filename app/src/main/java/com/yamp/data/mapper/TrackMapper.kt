@@ -16,7 +16,9 @@ fun TrackEntity.toDomain(): Track = Track(
     year = year,
     mimeType = mimeType,
     folderPath = folderPath,
-    metadataComplete = metadataComplete
+    metadataComplete = metadataComplete,
+    sourcePath = sourcePath,
+    fileHash = fileHash
 )
 
 fun List<TrackEntity>.toDomain(): List<Track> = map { it.toDomain() }

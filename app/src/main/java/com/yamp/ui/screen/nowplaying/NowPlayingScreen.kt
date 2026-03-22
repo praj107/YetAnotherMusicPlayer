@@ -30,14 +30,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
+import com.yamp.ui.components.ArtworkType
 import com.yamp.player.RepeatMode
 import com.yamp.ui.components.ProgressSlider
+import com.yamp.ui.components.YampArtwork
 import com.yamp.ui.theme.DarkBackground
 import com.yamp.ui.theme.Dimensions
 import com.yamp.ui.theme.TextSecondary
@@ -60,13 +60,16 @@ fun NowPlayingScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         // Album Art
-        AsyncImage(
+        YampArtwork(
             model = track?.albumArtUri,
-            contentDescription = track?.album,
+            title = track?.title ?: "Now playing",
+            type = ArtworkType.TRACK,
             modifier = Modifier
-                .size(Dimensions.albumArtLarge)
-                .clip(RoundedCornerShape(24.dp)),
-            contentScale = ContentScale.Crop
+                .size(Dimensions.albumArtLarge),
+            size = Dimensions.albumArtLarge,
+            mimeType = track?.mimeType.orEmpty(),
+            sourcePath = track?.sourcePath.orEmpty(),
+            contentDescription = track?.album
         )
 
         Spacer(modifier = Modifier.height(32.dp))

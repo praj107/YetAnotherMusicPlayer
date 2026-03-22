@@ -213,13 +213,15 @@ private fun MiniPlayerBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Album art thumbnail
-            AsyncImage(
+            YampArtwork(
                 model = track?.albumArtUri,
-                contentDescription = null,
+                title = track?.title ?: "Current track",
+                type = ArtworkType.TRACK,
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(8.dp)),
-                contentScale = ContentScale.Crop
+                    .size(44.dp),
+                size = 44.dp,
+                mimeType = track?.mimeType.orEmpty(),
+                sourcePath = track?.sourcePath.orEmpty()
             )
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -324,13 +326,16 @@ private fun ExpandedPlayer(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Album art
-        AsyncImage(
+        YampArtwork(
             model = track?.albumArtUri,
-            contentDescription = track?.album,
+            title = track?.title ?: "Now playing",
+            type = ArtworkType.TRACK,
             modifier = Modifier
-                .size(280.dp)
-                .clip(RoundedCornerShape(24.dp)),
-            contentScale = ContentScale.Crop
+                .size(280.dp),
+            size = 280.dp,
+            mimeType = track?.mimeType.orEmpty(),
+            sourcePath = track?.sourcePath.orEmpty(),
+            contentDescription = track?.album
         )
 
         Spacer(modifier = Modifier.height(32.dp))

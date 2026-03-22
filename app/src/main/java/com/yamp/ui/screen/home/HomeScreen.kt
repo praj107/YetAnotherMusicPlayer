@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.yamp.domain.model.Track
+import com.yamp.ui.components.ArtworkType
 import com.yamp.ui.components.RecommendedNextCard
 import com.yamp.ui.components.RequestAudioPermission
 import com.yamp.ui.components.TrackListItem
@@ -128,7 +129,8 @@ fun HomeScreen(
                         folderPath = "",
                         metadataComplete = true
                     ),
-                    onClick = { onPlaylistClick(playlist.id) }
+                    onClick = { onPlaylistClick(playlist.id) },
+                    artworkType = ArtworkType.FOLDER
                 )
             }
         }
