@@ -21,7 +21,22 @@ data class GitHubRelease(
         get() = assets.firstOrNull { it.name.endsWith(".apk") }
 
     val checksumAsset: GitHubAsset?
-        get() = assets.firstOrNull { it.name.endsWith(".sha256") }
+        get() {
+            val apkName = apkAsset?.name
+            if (apkName != null) {
+                val preferredNames = listOf(
+                    "$apkName.sha256",
+                    apkName.removeSuffix(".apk") + ".sha256"
+                )
+                preferredNames.forEach { checksumName ->
+                    assets.firstOrNull { it.name == checksumName }?.let { return it }
+                }
+            }
+
+            return assets.firstOrNull { asset ->
+                asset.name.endsWith(".sha256") && !asset.name.endsWith(".aab.sha256")
+            } ?: assets.firstOrNull { it.name.endsWith(".sha256") }
+        }
 }
 
 data class GitHubAsset(

@@ -22,7 +22,11 @@ REPO_URL="$(git -C "$PROJECT_DIR" remote get-url origin)"
 GITHUB_REPO="$(echo "$REPO_URL" | sed -E 's|.*github\.com[:/]||' | sed 's/\.git$//')"
 
 declare -a assets
-assets=("$APK_DEST" "$APK_SHA_FILE" "$SOURCE_ARCHIVE" "$RELEASE_NOTES_FILE")
+assets=("$APK_DEST" "$APK_SHA_FILE")
+if [[ -n "${APK_LEGACY_SHA_FILE:-}" ]]; then
+    assets+=("$APK_LEGACY_SHA_FILE")
+fi
+assets+=("$SOURCE_ARCHIVE" "$RELEASE_NOTES_FILE")
 if [[ -n "${AAB_DEST:-}" ]]; then
     assets+=("$AAB_DEST")
 fi

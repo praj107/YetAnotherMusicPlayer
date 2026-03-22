@@ -69,6 +69,30 @@ class GitHubReleaseTest {
     }
 
     @Test
+    fun `checksumAsset falls back to legacy apk checksum filename`() {
+        val release = makeRelease(assets = listOf(
+            makeAsset("yamp-v1.0.0.apk"),
+            makeAsset("yamp-v1.0.0.sha256")
+        ))
+
+        assertNotNull(release.checksumAsset)
+        assertEquals("yamp-v1.0.0.sha256", release.checksumAsset?.name)
+    }
+
+    @Test
+    fun `checksumAsset prefers checksum matching apk when multiple sha256 assets exist`() {
+        val release = makeRelease(assets = listOf(
+            makeAsset("yamp-v1.0.0.aab.sha256"),
+            makeAsset("yamp-v1.0.0.apk"),
+            makeAsset("yamp-v1.0.0.sha256"),
+            makeAsset("yamp-v1.0.0.apk.sha256")
+        ))
+
+        assertNotNull(release.checksumAsset)
+        assertEquals("yamp-v1.0.0.apk.sha256", release.checksumAsset?.name)
+    }
+
+    @Test
     fun `checksumAsset null when no sha256`() {
         val release = makeRelease(assets = listOf(makeAsset("yamp-v1.0.0.apk")))
         assertNull(release.checksumAsset)

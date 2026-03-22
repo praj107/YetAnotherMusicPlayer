@@ -58,13 +58,16 @@ APK_DEST="$OUTPUT_DIR/yamp-v${VERSION_NAME}.apk"
 AAB_DEST="$OUTPUT_DIR/yamp-v${VERSION_NAME}.aab"
 MAPPING_DEST="$OUTPUT_DIR/yamp-v${VERSION_NAME}-mapping.txt"
 APK_SHA_FILE="$OUTPUT_DIR/yamp-v${VERSION_NAME}.apk.sha256"
+APK_LEGACY_SHA_FILE="$OUTPUT_DIR/yamp-v${VERSION_NAME}.sha256"
 AAB_SHA_FILE="$OUTPUT_DIR/yamp-v${VERSION_NAME}.aab.sha256"
 SOURCE_ARCHIVE="$OUTPUT_DIR/yamp-v${VERSION_NAME}-source.tar.gz"
 RELEASE_NOTES_FILE="$OUTPUT_DIR/yamp-v${VERSION_NAME}-release-notes.md"
 MANIFEST_FILE="$OUTPUT_DIR/release-manifest.env"
 
 cp "$APK_SOURCE" "$APK_DEST"
-sha256sum "$APK_DEST" | awk '{print $1}' > "$APK_SHA_FILE"
+APK_SHA="$(sha256sum "$APK_DEST" | awk '{print $1}')"
+printf '%s\n' "$APK_SHA" > "$APK_SHA_FILE"
+printf '%s\n' "$APK_SHA" > "$APK_LEGACY_SHA_FILE"
 
 if [[ -n "$AAB_SOURCE" && -f "$AAB_SOURCE" ]]; then
     cp "$AAB_SOURCE" "$AAB_DEST"
@@ -98,7 +101,6 @@ else
     CHANGELOG="$(git -C "$PROJECT_DIR" log --pretty=format:'- %s' -20)"
 fi
 
-APK_SHA="$(cat "$APK_SHA_FILE")"
 AAB_SHA=""
 if [[ -n "$AAB_SHA_FILE" && -f "$AAB_SHA_FILE" ]]; then
     AAB_SHA="$(cat "$AAB_SHA_FILE")"
@@ -134,6 +136,7 @@ VERSION_NAME=${VERSION_NAME}
 TAG_NAME=${TAG_NAME}
 APK_DEST=${APK_DEST}
 APK_SHA_FILE=${APK_SHA_FILE}
+APK_LEGACY_SHA_FILE=${APK_LEGACY_SHA_FILE}
 AAB_DEST=${AAB_DEST}
 AAB_SHA_FILE=${AAB_SHA_FILE}
 MAPPING_DEST=${MAPPING_DEST}
